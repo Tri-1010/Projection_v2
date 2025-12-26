@@ -7,3 +7,4 @@ __pycache__/
 *.pyd
 *.xlsx
 *.parquet
+notebooks/V11.ipynb
