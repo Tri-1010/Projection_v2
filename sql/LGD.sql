@@ -1,0 +1,3 @@
+SELECT *
+from LGD
+WHERE CUTOFF_DATE_M0 IS NOT null
