@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "risk-markov-projection"
+version = "0.1.0"
+description = "Projection of risk indicators using time-inhomogeneous Markov chains by segment and MOB."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "numpy>=1.24",
+  "pandas>=2.1",
+  "pyarrow>=14.0",
+  "pytest>=7.4"
+]
+authors = [{ name = "Risk Modeling Team" }]
+license = { text = "Proprietary" }
+
+[project.optional-dependencies]
+dev = ["ruff>=0.1.7"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+pythonpath = ["src", "."]
+markers = ["integration: end-to-end pipeline tests"]

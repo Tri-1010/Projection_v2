@@ -1,0 +1,46 @@
+# Progress
+
+- [x] T0 - Project bootstrap
+  - What changed: Created scaffold risk_markov_projection with src/, tests/, README.md, pyproject.toml, and progress log.
+  - How to test: Not applicable yet; tests will be added in later tasks.
+  - Notes: Using ascii-only formatting for compatibility.
+- [x] T1 - Config & schema
+  - What changed: Added config.py with schema mapping, thresholds, buckets, calibration, and transition weighting; added schema module for column mapping.
+  - How to test: Import config and default_schema() to verify STATE_ORDER, segment_cols, and thresholds are set as expected.
+  - Notes: Transition_weight_mode set to ead; CLOSED absorbing flag exposed via config.
+- [x] T2 - Data loader
+  - What changed: Added Oracle/parquet loaders with config-driven source selection and required-column check.
+  - How to test: Use load_raw_data() with parquet samples or mock Oracle; expect clear errors when files or columns are missing.
+  - Notes: Oracle import is lazy to avoid dependency when using parquet inputs.
+- [x] T3 - Validation
+  - What changed: Added validators for required columns, nulls, duplicates, state membership, and MOB range.
+  - How to test: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/test_validators.py -q
+  - Notes: Validation uses config state_order and max_mob settings.
+- [x] T4 - Transition library (EAD-weighted)
+  - What changed: TransitionModel builds EAD-weighted matrices with smoothing, absorbing enforcement, fallback selection, and audit metadata.
+  - How to test: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/test_transition.py tests/test_fallback.py -q
+  - Notes: Fallback priority and smoothing parents configurable via config.
+- [x] T5 - Projection EAD theo state
+  - What changed: MarkovProjector projects EAD vectors by segment/mob to the configured horizon using time-inhomogeneous matrices.
+  - How to test: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/test_projector_ead.py -q
+  - Notes: Absorbing rules applied per state_order; audit captured per mob.
+- [x] T6 - Convert to % tren EAD0
+  - What changed: Implemented forecast_to_distribution to normalize projected EAD to EAD0 and emit DIST_* columns.
+  - How to test: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/test_distribution_ead0.py -q
+  - Notes: Distributions follow MOB 0 denominator per segment.
+- [x] T7 - Indicators
+  - What changed: Derived DEL_30P/60P/90P from bucket sums of distributions with bounds checks.
+  - How to test: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/test_indicators.py -q
+  - Notes: Buckets fully driven by config constants.
+- [x] T8 - Calibration
+  - What changed: Added scalar_by_mob fitting/clamping and application to delinquent buckets with renormalization; factors stored per mob.
+  - How to test: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/test_calibration.py -q
+  - Notes: Calibration can be toggled in config; clamps use config bounds.
+- [x] T9 - Pipeline & CLI
+  - What changed: run_projection pipeline loads data, validates, builds transitions, projects, calibrates, logs metrics, and saves CSV/Parquet; integration test uses synthetic parquet.
+  - How to test: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/test_integration_pipeline.py -q
+  - Notes: CLI supports asof-date, target-mob, and source overrides.
+- [x] T10 - Quality
+  - What changed: Added MAE/WAPE metrics on indicators, fallback usage reporting, and README guidance for running tests cleanly.
+  - How to test: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q
+  - Notes: Metrics computed against observed DEL_30P_ON_EAD0 when available in input data.
