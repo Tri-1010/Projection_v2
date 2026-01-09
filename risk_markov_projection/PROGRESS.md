@@ -41,6 +41,6 @@
   - How to test: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/test_integration_pipeline.py -q
   - Notes: CLI supports asof-date, target-mob, and source overrides.
 - [x] T10 - Quality
-  - What changed: Added MAE/WAPE metrics on indicators, fallback usage reporting, and README guidance for running tests cleanly.
+  - What changed: Added MAE/WAPE metrics on indicators, fallback usage reporting, README guidance, and a detailed GUIDE.md for run/debug steps.
   - How to test: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q
   - Notes: Metrics computed against observed DEL_30P_ON_EAD0 when available in input data.
