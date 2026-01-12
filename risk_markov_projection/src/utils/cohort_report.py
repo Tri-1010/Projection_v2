@@ -24,7 +24,7 @@ def _del30_by_cohort_actual(raw_df: pd.DataFrame, schema: DataSchema, buckets: L
 
     ead0 = df[df[mob_col] == 0].groupby(cohort_col)[ead_col].sum()
     cohorts = ead0.index
-    mob_values = sorted([m for m in df[mob_col].unique() if m <= max_mob])
+    mob_values = list(range(max_mob + 1))
 
     actual_cols: Dict[str, pd.Series] = {}
     for mob in mob_values:
@@ -71,7 +71,7 @@ def _del30_by_cohort_forecast(raw_df: pd.DataFrame, projection_df: pd.DataFrame,
         .to_frame("del30")
         .reset_index()
     )
-    mob_values = sorted([m for m in seg_del[mob_col].unique() if m <= max_mob])
+    mob_values = list(range(max_mob + 1))
 
     records: Dict[str, Dict[pd.Timestamp, float]] = {}
     for cohort, cohort_seg in ead0_seg.groupby(level=0):
@@ -221,10 +221,12 @@ def export_cohort_del30_excel_combined(
             fore_col = f"MOB{mob}_FORECAST"
             act_val = actual_df.at[cohort, act_col] if not actual_df.empty and act_col in actual_df.columns and cohort in actual_df.index else np.nan
             fore_val = forecast_df.at[cohort, fore_col] if not forecast_df.empty and fore_col in forecast_df.columns and cohort in forecast_df.index else np.nan
-            if pd.notna(act_val):
+            if pd.notna(act_val) and (float(act_val) != 0 or pd.isna(fore_val) or float(fore_val) == 0):
+                # Prefer actual when it is non-zero, or when forecast is missing/zero
                 val = float(act_val)
                 font = None
             elif pd.notna(fore_val):
+                # Use forecast (highlight) when actual is missing or zero but forecast has signal
                 val = float(fore_val)
                 font = forecast_font
             else:
@@ -232,6 +234,83 @@ def export_cohort_del30_excel_combined(
                 font = None
             row_vals.append(val)
             row_fonts.append(font)
+
+        ws.append(row_vals)
+        row_idx = ws.max_row
+        for col_idx, font in enumerate(row_fonts, start=1):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            if col_idx > 1:
+                cell.number_format = "0.00%"
+            if font:
+                cell.font = font
+
+    _auto_width(ws)
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    wb.save(output_path)
+    return output_path
+
+
+def export_cohort_del30_excel_split(
+    raw_df: pd.DataFrame,
+    projection_df: pd.DataFrame,
+    output_path: str | Path,
+    schema: Optional[DataSchema] = None,
+    state_order: Optional[List[str]] = None,
+    buckets_30p: Optional[List[str]] = None,
+    max_mob: Optional[int] = None,
+) -> Path:
+    """
+    Export Cohort x MOB table with separate ACTUAL and FORECAST columns per MOB.
+    Forecast cells are styled in red bold; all MOB cells formatted as %.
+    """
+    schema = schema or default_schema()
+    state_order = state_order or config.STATE_ORDER
+    buckets_30p = buckets_30p or config.BUCKETS_30P
+    max_mob = max_mob if max_mob is not None else config.MAX_MOB
+
+    actual_df = _del30_by_cohort_actual(raw_df, schema, buckets_30p, max_mob)
+    forecast_df = _del30_by_cohort_forecast(raw_df, projection_df, schema, max_mob)
+
+    if actual_df.empty and forecast_df.empty:
+        raise ValueError("No cohort data available for export.")
+
+    actual_df = actual_df.set_index("Cohort") if not actual_df.empty else pd.DataFrame()
+    forecast_df = forecast_df.set_index("Cohort") if not forecast_df.empty else pd.DataFrame()
+
+    mobs = sorted(set(_extract_mobs(actual_df, "_ACTUAL") + _extract_mobs(forecast_df, "_FORECAST")))
+    cohorts = sorted(set(actual_df.index.tolist()) | set(forecast_df.index.tolist()))
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Cohort DEL30 split"
+    ws.sheet_view.showGridLines = False
+
+    header = ["Cohort"] + [f"MOB{m}_ACTUAL" for m in mobs] + [f"MOB{m}_FORECAST" for m in mobs]
+    ws.append(header)
+    for cell in ws[1]:
+        cell.fill = PatternFill("solid", fgColor="D9D9D9")
+        cell.font = Font(bold=True)
+
+    forecast_font = Font(color="FF0000", bold=True)
+
+    for cohort in cohorts:
+        row_vals = [cohort]
+        row_fonts = [None]
+        for mob in mobs:
+            act_col = f"MOB{mob}_ACTUAL"
+            val = None
+            if not actual_df.empty and act_col in actual_df.columns and cohort in actual_df.index:
+                val = actual_df.at[cohort, act_col]
+            row_vals.append(val if pd.notna(val) else None)
+            row_fonts.append(None)
+        for mob in mobs:
+            fore_col = f"MOB{mob}_FORECAST"
+            val = None
+            if not forecast_df.empty and fore_col in forecast_df.columns and cohort in forecast_df.index:
+                val = forecast_df.at[cohort, fore_col]
+            row_vals.append(val if pd.notna(val) else None)
+            row_fonts.append(forecast_font if pd.notna(val) else None)
 
         ws.append(row_vals)
         row_idx = ws.max_row
