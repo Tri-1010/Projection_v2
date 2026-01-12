@@ -55,6 +55,7 @@ export_projection_excel(
 - Chạy cell thiết lập môi trường (in ra project root).
 - Chỉnh `DATA_SOURCE`, `PARQUET_PATH`, ngưỡng trong cell cấu hình.
 - Chạy các cell để load/validate, project, visualize, và cell cuối để xuất Excel.
+- Dữ liệu lớn: bật cache (`USE_RAW_CACHE`, `USE_PROJ_CACHE`) và đường dẫn cache (`RAW_CACHE_PATH`, `PROJ_CACHE_PATH`) trong notebook để tránh phải chạy lại bước nặng; xóa/đổi cache khi thay đổi nguồn dữ liệu hoặc config.
 
 ## Kiểm thử
 - Chạy: `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q`

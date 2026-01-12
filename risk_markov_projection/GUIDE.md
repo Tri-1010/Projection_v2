@@ -49,6 +49,9 @@ export_projection_excel(
 ```
 Each segment gets its own sheet with DEL%, audit info, (optional) actuals, and errors; the Summary sheet shows fallback rate, mean calibration factor, MAE/WAPE.
 
+### Speed up reruns on large data
+- In `notebooks/interactive_projection.ipynb`, use the cache toggles (`USE_RAW_CACHE`, `USE_PROJ_CACHE`) and cache paths (`RAW_CACHE_PATH`, `PROJ_CACHE_PATH`) to reload raw data and projections without rerunning heavy steps. Clear the cache if you change data source or config.
+
 ## Notebook workflow
 - Open `notebooks/interactive_projection.ipynb`.
 - Ensure the first cell prints the detected project root; adjust `DATA_SOURCE`, `PARQUET_PATH`, and thresholds in the config cell.
