@@ -1,5 +1,7 @@
 # Risk Markov Projection – Detailed Guide
 
+(*Xem thêm bản tiếng Việt: GUIDE_VI.md*)
+
 This guide shows how to configure, run, and validate the time-inhomogeneous Markov projection pipeline. All parameters live in `config.py`; avoid hard-coding elsewhere.
 
 ## Data requirements
