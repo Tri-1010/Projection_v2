@@ -14,7 +14,11 @@ from src.models.markov.projector import MarkovProjector
 from src.models.markov.transition import TransitionModel
 from src.utils.logger import get_logger
 from src.utils.metrics import aggregate_indicator_by_mob, delinquency_indicator, mae, wape
-from src.utils.cohort_report import export_cohort_del30_report, export_cohort_del30_excel_combined
+from src.utils.cohort_report import (
+    export_cohort_del30_report,
+    export_cohort_del30_excel_combined,
+    export_cohort_del30_excel_split,
+)
 
 
 logger = get_logger(__name__)
@@ -42,6 +46,9 @@ def run(asof_date: str | None = None, target_mob: int | None = None, source: str
     logger.info("Loading data...")
     df = load_raw_data(schema=schema, source=source, parquet_path=parquet_path)
     logger.info("Validating input...")
+    if schema.cohort_col and schema.cohort_col not in df.columns:
+        logger.warning("Cohort column %s missing; disabling cohort reporting for this run.", schema.cohort_col)
+        schema = replace(schema, cohort_col=None)
     validate_input(df, schema=schema, max_mob=max_mob)
 
     logger.info("Building transitions...")
@@ -153,6 +160,20 @@ def run(asof_date: str | None = None, target_mob: int | None = None, source: str
             logger.info("Saved cohort DEL30 Excel report to %s", cohort_report_excel)
         except ValueError as exc:
             logger.warning("Skipping cohort Excel export: %s", exc)
+        cohort_report_excel_split = output_dir / config.OUTPUT.get("cohort_report_excel_split_name", "cohort_del30_report_split.xlsx")
+        try:
+            export_cohort_del30_excel_split(
+                df,
+                projection_df,
+                output_path=cohort_report_excel_split,
+                schema=schema,
+                state_order=config.STATE_ORDER,
+                buckets_30p=config.BUCKETS_30P,
+                max_mob=max_mob,
+            )
+            logger.info("Saved cohort DEL30 split Excel report to %s", cohort_report_excel_split)
+        except ValueError as exc:
+            logger.warning("Skipping cohort split Excel export: %s", exc)
 
     logger.info("Projection saved to %s and %s", csv_path, parquet_output)
     return projection_df
@@ -175,3 +196,4 @@ if __name__ == "__main__":
         source=args.source,
         parquet_path=Path(args.parquet_path) if args.parquet_path else None,
     )
+from dataclasses import replace
