@@ -57,7 +57,11 @@ def run(asof_date: str | None = None, target_mob: int | None = None, source: str
 
     if config.CALIBRATION.get("enabled", False) and not projection_df.empty:
         logger.info("Applying calibration (scalar_by_mob)...")
-        actual_aligned = actual_series.reindex(predicted_series.index).ffill().bfill()
+        actual_aligned = (
+            actual_series.reindex(predicted_series.index).ffill().bfill()
+            if not actual_series.empty
+            else pd.Series(index=predicted_series.index, dtype=float)
+        )
         factors = fit_scalar_by_mob(
             actual_aligned,
             predicted_series,
@@ -76,13 +80,18 @@ def run(asof_date: str | None = None, target_mob: int | None = None, source: str
             projection_df, indicator_col="DEL_30P_ON_EAD0", weight_col="EAD0", mob_col=schema.mob_col
         )
 
-    if not actual_series.empty and not predicted_series.empty:
-        actual_aligned = actual_series.reindex(predicted_series.index).ffill().bfill()
-        logger.info(
-            "MAE/WAPE for DEL_30P_ON_EAD0 by MOB: mae=%.6f wape=%.6f",
-            mae(actual_aligned, predicted_series),
-            wape(actual_aligned, predicted_series),
+    if not predicted_series.empty:
+        actual_aligned = (
+            actual_series.reindex(predicted_series.index).ffill().bfill()
+            if not actual_series.empty
+            else pd.Series(index=predicted_series.index, dtype=float)
         )
+        if not actual_aligned.empty:
+            logger.info(
+                "MAE/WAPE for DEL_30P_ON_EAD0 by MOB: mae=%.6f wape=%.6f",
+                mae(actual_aligned, predicted_series),
+                wape(actual_aligned, predicted_series),
+            )
 
     if not projection_df.empty:
         fallback_rate = (projection_df["matrix_source"] != "segment_mob").mean()
@@ -94,6 +103,27 @@ def run(asof_date: str | None = None, target_mob: int | None = None, source: str
     parquet_output = output_dir / config.OUTPUT["parquet_name"]
     projection_df.to_csv(csv_path, index=False)
     projection_df.to_parquet(parquet_output, index=False)
+
+    # Report actual vs predicted DEL_30P_ON_EAD0 by MOB
+    if not predicted_series.empty:
+        actual_aligned = (
+            actual_series.reindex(predicted_series.index).ffill().bfill()
+            if not actual_series.empty
+            else pd.Series(index=predicted_series.index, dtype=float)
+        )
+        report_df = pd.DataFrame(
+            {
+                schema.mob_col: predicted_series.index,
+                "ACTUAL_DEL30P_ON_EAD0": actual_aligned.values,
+                "PRED_DEL30P_ON_EAD0": predicted_series.values,
+            }
+        )
+        report_df["ABS_ERR"] = (report_df["ACTUAL_DEL30P_ON_EAD0"] - report_df["PRED_DEL30P_ON_EAD0"]).abs()
+        report_df["REL_ERR"] = report_df["ABS_ERR"] / report_df["ACTUAL_DEL30P_ON_EAD0"].abs()
+        report_path = output_dir / config.OUTPUT.get("report_name", "indicator_report.csv")
+        report_df.to_csv(report_path, index=False)
+        logger.info("Saved indicator report to %s", report_path)
+
     logger.info("Projection saved to %s and %s", csv_path, parquet_output)
     return projection_df
 

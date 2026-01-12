@@ -27,7 +27,7 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m src.pipelines.run_projection \
   --source parquet \
   --parquet-path "C:/path/to/parquet_dir"
 ```
-Outputs: CSV and Parquet in `OUTPUT["dir"]` with `EAD_*`, `DIST_*`, `DEL_*_ON_EAD0`, and audit columns (`matrix_source`, `mob_used`, `n_obs_used`, `ead_sum_used`, `calibration_factor`).
+Outputs: CSV and Parquet in `OUTPUT["dir"]` with `EAD_*`, `DIST_*`, `DEL_*_ON_EAD0`, and audit columns (`matrix_source`, `mob_used`, `n_obs_used`, `ead_sum_used`, `calibration_factor`). An indicator report (`OUTPUT["report_name"]`, default `indicator_report.csv`) is also written with actual vs predicted `DEL_30P_ON_EAD0` by MOB, absolute and relative errors.
 
 ## Notebook workflow
 - Open `notebooks/interactive_projection.ipynb`.

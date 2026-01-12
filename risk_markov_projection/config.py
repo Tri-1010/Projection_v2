@@ -81,6 +81,7 @@ OUTPUT = {
     "dir": Path("outputs"),
     "csv_name": "projection.csv",
     "parquet_name": "projection.parquet",
+    "report_name": "indicator_report.csv",
 }
 
 # Logging
