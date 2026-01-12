@@ -29,6 +29,24 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m src.pipelines.run_projection \
 ```
 Outputs: CSV and Parquet in `OUTPUT["dir"]` with `EAD_*`, `DIST_*`, `DEL_*_ON_EAD0`, and audit columns (`matrix_source`, `mob_used`, `n_obs_used`, `ead_sum_used`, `calibration_factor`). An indicator report (`OUTPUT["report_name"]`, default `indicator_report.csv`) is also written with actual vs predicted `DEL_30P_ON_EAD0` by MOB, absolute and relative errors.
 
+### Export Excel report
+From a Python session after running the pipeline:
+```python
+from pathlib import Path
+import pandas as pd
+from src.utils.export_excel import export_projection_excel
+from src.utils.metrics import aggregate_indicator_by_mob
+
+# projection_df is the output of run_projection
+actual_series = pd.read_csv("outputs/indicator_report.csv").set_index("MOB")["ACTUAL_DEL30P_ON_EAD0"]
+export_projection_excel(
+    projection_df,
+    output_path=Path("outputs/projection_report.xlsx"),
+    actual_del30p_by_mob=actual_series,
+)
+```
+Each segment gets its own sheet with DEL%, audit info, (optional) actuals, and errors; the Summary sheet shows fallback rate, mean calibration factor, MAE/WAPE.
+
 ## Notebook workflow
 - Open `notebooks/interactive_projection.ipynb`.
 - Ensure the first cell prints the detected project root; adjust `DATA_SOURCE`, `PARQUET_PATH`, and thresholds in the config cell.
