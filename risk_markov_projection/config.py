@@ -85,6 +85,7 @@ OUTPUT = {
     "parquet_name": "projection.parquet",
     "report_name": "indicator_report.csv",
     "cohort_report_name": "cohort_del30_report.csv",
+    "cohort_report_excel_name": "cohort_del30_report.xlsx",
 }
 
 # Logging

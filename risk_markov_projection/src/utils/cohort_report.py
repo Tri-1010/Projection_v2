@@ -5,6 +5,9 @@ from typing import Dict, Iterable, List, Optional
 
 import numpy as np
 import pandas as pd
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill
+from openpyxl.utils import get_column_letter
 
 import config
 from src.data.schema import DataSchema, default_schema
@@ -145,4 +148,102 @@ def export_cohort_del30_report(
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     report_df.to_csv(output_path, index=False)
+    return output_path
+
+
+def _auto_width(ws) -> None:
+    for col in ws.columns:
+        max_len = max(len(str(c.value)) if c.value is not None else 0 for c in col)
+        ws.column_dimensions[get_column_letter(col[0].column)].width = min(max_len + 2, 60)
+
+
+def _extract_mobs(df: pd.DataFrame, suffix: str) -> List[int]:
+    mobs = []
+    for col in df.columns:
+        if col.startswith("MOB") and col.endswith(suffix):
+            try:
+                mobs.append(int(col[3:-len(suffix)]))
+            except ValueError:
+                continue
+    return mobs
+
+
+def export_cohort_del30_excel_combined(
+    raw_df: pd.DataFrame,
+    projection_df: pd.DataFrame,
+    output_path: str | Path,
+    schema: Optional[DataSchema] = None,
+    state_order: Optional[List[str]] = None,
+    buckets_30p: Optional[List[str]] = None,
+    max_mob: Optional[int] = None,
+) -> Path:
+    """
+    Export Cohort x MOB table with a single column per MOB.
+    - If actual exists for a MOB, use actual.
+    - Else use forecast and style in red bold.
+    All MOB cells are formatted as percentages.
+    """
+    schema = schema or default_schema()
+    state_order = state_order or config.STATE_ORDER
+    buckets_30p = buckets_30p or config.BUCKETS_30P
+    max_mob = max_mob if max_mob is not None else config.MAX_MOB
+
+    actual_df = _del30_by_cohort_actual(raw_df, schema, buckets_30p, max_mob)
+    forecast_df = _del30_by_cohort_forecast(raw_df, projection_df, schema, max_mob)
+
+    if actual_df.empty and forecast_df.empty:
+        raise ValueError("No cohort data available for export.")
+
+    actual_df = actual_df.set_index("Cohort") if not actual_df.empty else pd.DataFrame()
+    forecast_df = forecast_df.set_index("Cohort") if not forecast_df.empty else pd.DataFrame()
+
+    mobs = sorted(set(_extract_mobs(actual_df, "_ACTUAL") + _extract_mobs(forecast_df, "_FORECAST")))
+    cohorts = sorted(set(actual_df.index.tolist()) | set(forecast_df.index.tolist()))
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Cohort DEL30"
+    ws.sheet_view.showGridLines = False
+
+    header = ["Cohort"] + [f"MOB{m}" for m in mobs]
+    ws.append(header)
+    for cell in ws[1]:
+        cell.fill = PatternFill("solid", fgColor="D9D9D9")
+        cell.font = Font(bold=True)
+
+    forecast_font = Font(color="FF0000", bold=True)
+
+    for cohort in cohorts:
+        row_vals = [cohort]
+        row_fonts = [None]
+        for mob in mobs:
+            act_col = f"MOB{mob}_ACTUAL"
+            fore_col = f"MOB{mob}_FORECAST"
+            act_val = actual_df.at[cohort, act_col] if not actual_df.empty and act_col in actual_df.columns and cohort in actual_df.index else np.nan
+            fore_val = forecast_df.at[cohort, fore_col] if not forecast_df.empty and fore_col in forecast_df.columns and cohort in forecast_df.index else np.nan
+            if pd.notna(act_val):
+                val = float(act_val)
+                font = None
+            elif pd.notna(fore_val):
+                val = float(fore_val)
+                font = forecast_font
+            else:
+                val = None
+                font = None
+            row_vals.append(val)
+            row_fonts.append(font)
+
+        ws.append(row_vals)
+        row_idx = ws.max_row
+        for col_idx, font in enumerate(row_fonts, start=1):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            if col_idx > 1:
+                cell.number_format = "0.00%"
+            if font:
+                cell.font = font
+
+    _auto_width(ws)
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    wb.save(output_path)
     return output_path
