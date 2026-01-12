@@ -22,6 +22,8 @@ SCHEMA = {
     "ead_col": "PRINCIPLE_OUTSTANDING",
     "date_col": "CUTOFF_DATE",
     "segment_cols": ["RISK_SCORE", "PRODUCT_TYPE"],
+    # Optional: disbursal/cohort column for cohort reporting
+    "cohort_col": None,  # e.g., "DISBURSAL_DATE"
 }
 
 # States and absorbing rules
@@ -82,6 +84,7 @@ OUTPUT = {
     "csv_name": "projection.csv",
     "parquet_name": "projection.parquet",
     "report_name": "indicator_report.csv",
+    "cohort_report_name": "cohort_del30_report.csv",
 }
 
 # Logging

@@ -49,6 +49,13 @@ export_projection_excel(
 ```
 Each segment gets its own sheet with DEL%, audit info, (optional) actuals, and errors; the Summary sheet shows fallback rate, mean calibration factor, MAE/WAPE.
 
+### Cohort report (disbursal month x MOB)
+- Set `config.SCHEMA["cohort_col"]` to the disbursal column (e.g., `DISBURSAL_DATE`).
+- Run the pipeline; it will output `OUTPUT["cohort_report_name"]` (default `cohort_del30_report.csv`) with:
+  - Column `Cohort` = disbursal month.
+  - Columns `MOBx_ACTUAL`: %DEL30 over EAD0 at MOB x from historical data.
+  - Columns `MOBx_FORECAST`: %DEL30 over EAD0 at MOB x from projection (weighted by cohort’s segment EAD0).
+
 ### Speed up reruns on large data
 - In `notebooks/interactive_projection.ipynb`, use the cache toggles (`USE_RAW_CACHE`, `USE_PROJ_CACHE`) and cache paths (`RAW_CACHE_PATH`, `PROJ_CACHE_PATH`) to reload raw data and projections without rerunning heavy steps. Clear the cache if you change data source or config.
 

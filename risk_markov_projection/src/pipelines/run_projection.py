@@ -14,6 +14,7 @@ from src.models.markov.projector import MarkovProjector
 from src.models.markov.transition import TransitionModel
 from src.utils.logger import get_logger
 from src.utils.metrics import aggregate_indicator_by_mob, delinquency_indicator, mae, wape
+from src.utils.cohort_report import export_cohort_del30_report
 
 
 logger = get_logger(__name__)
@@ -123,6 +124,21 @@ def run(asof_date: str | None = None, target_mob: int | None = None, source: str
         report_path = output_dir / config.OUTPUT.get("report_name", "indicator_report.csv")
         report_df.to_csv(report_path, index=False)
         logger.info("Saved indicator report to %s", report_path)
+
+    # Cohort report (requires cohort_col in schema and data)
+    cohort_col = getattr(schema, "cohort_col", None)
+    if cohort_col and cohort_col in df.columns:
+        cohort_report_path = output_dir / config.OUTPUT.get("cohort_report_name", "cohort_del30_report.csv")
+        export_cohort_del30_report(
+            df,
+            projection_df,
+            output_path=cohort_report_path,
+            schema=schema,
+            state_order=config.STATE_ORDER,
+            buckets_30p=config.BUCKETS_30P,
+            max_mob=max_mob,
+        )
+        logger.info("Saved cohort DEL30 report to %s", cohort_report_path)
 
     logger.info("Projection saved to %s and %s", csv_path, parquet_output)
     return projection_df
