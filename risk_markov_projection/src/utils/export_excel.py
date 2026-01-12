@@ -109,7 +109,13 @@ def export_projection_excel(
 
         pct_cols = {"DEL_30P_ON_EAD0", "DEL_60P_ON_EAD0", "DEL_90P_ON_EAD0", "ACTUAL_DEL30P_ON_EAD0", "ABS_ERR", "REL_ERR"}
         for _, row in seg_df[ordered_cols].iterrows():
-            ws.append(row.tolist())
+            cleaned = []
+            for val in row.tolist():
+                if pd.isna(val):
+                    cleaned.append(None)
+                else:
+                    cleaned.append(val)
+            ws.append(cleaned)
 
         # Format percentage-like columns
         for col_idx, col_name in enumerate(ordered_cols, start=1):
